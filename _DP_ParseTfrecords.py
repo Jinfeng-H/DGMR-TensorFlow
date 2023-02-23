@@ -50,31 +50,14 @@ def reader(split, variant="random_crops_256", shuffle_files=False):
     # This part is used for parsing tain, validatin.
     if split == "train":
         df_train_2005 = pd.read_csv(
-            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_train_sample_2005_30.csv', header=0)
+            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_train_sample_30.csv', header=0)
         shard_paths_temp_2005 = df_train_2005.iloc[:, 0].values
-        df_train_2006 = pd.read_csv(
-            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_train_sample_2006_80.csv',
-            header=0)
-        shard_paths_temp_2006 = df_train_2006.iloc[:, 0].values
-        shard_paths_temp_2005 = np.append(shard_paths_temp_2005, shard_paths_temp_2006)
-        df_train_2089 = pd.read_csv(
-            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_train_sample_2089_160.csv',
-            header=0)
-        shard_paths_temp_2089 = df_train_2089.iloc[:, 0].values
-        df_train_2012 = pd.read_csv(
-            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_train_sample_2012_30.csv', header=0)
-        shard_paths_temp_2012 = df_train_2012.iloc[:, 0].values
-        shard_paths_temp_2012 = np.append(shard_paths_temp_2012, shard_paths_temp_2089)
         print('Load train finished!')
     elif split == "validation":
         df_val_2005 = pd.read_csv(
-            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_validation_sample_2005_30.csv',
+            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_validation_sample_30.csv',
             header=0)
         shard_paths_temp_2005 = df_val_2005.iloc[:, 0].values
-        df_val_2012 = pd.read_csv(
-            'D://Jinfeng/v6_modules_get_config/00 making tfrecords and statistics/00_validation_sample_2012_30.csv',
-            header=0)
-        shard_paths_temp_2012 = df_val_2012.iloc[:, 0].values
         print('Load validation finished!')
 
     shard_paths_2005 = np.array([])
@@ -82,27 +65,16 @@ def reader(split, variant="random_crops_256", shuffle_files=False):
         temp_path_2005 = os.path.join(DATASET_ROOT_DIR, split, variant, i)
         shard_paths_2005 = np.append(shard_paths_2005, temp_path_2005)
 
-    shard_paths_2012 = np.array([])
-    for m in shard_paths_temp_2012:
-        temp_path_2012 = os.path.join(DATASET_ROOT_DIR, split, variant, m)
-        shard_paths_2012 = np.append(shard_paths_2012, temp_path_2012)
     print(f'len(shard_paths_2005) is {len(shard_paths_2005)}')
-    print(f'len(shard_paths_2012) is {len(shard_paths_2012)}')
     shards_dataset_2005 = tf.data.Dataset.from_tensor_slices(shard_paths_2005)
-    shards_dataset_2012 = tf.data.Dataset.from_tensor_slices(shard_paths_2012)
 
     if shuffle_files:
         shards_dataset_2005 = shards_dataset_2005.shuffle(buffer_size=len(shard_paths_2005))
-        shards_dataset_2012 = shards_dataset_2012.shuffle(buffer_size=len(shard_paths_2012))
 
     dataset_2005 = shards_dataset_2005.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=""),
                                                   num_parallel_calls=tf.data.AUTOTUNE, deterministic=not shuffle_files)\
         .map(lambda row: parse_and_preprocess_row(row, split, variant, data_type=tf.float64), num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_2012 = shards_dataset_2012.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=""),
-                                                  num_parallel_calls=tf.data.AUTOTUNE, deterministic=not shuffle_files)\
-        .map(lambda row: parse_and_preprocess_row(row, split, variant, data_type=tf.float32), num_parallel_calls=tf.data.AUTOTUNE)
-    # dataset_all = tf.concat([dataset_2005, dataset_2012], 0)
-    return dataset_2005, dataset_2012
+    return dataset_2005
 
 
 def reader_test(split, variant="random_crops_256", shuffle_files=False):
