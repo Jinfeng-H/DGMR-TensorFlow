@@ -320,36 +320,6 @@ class DGMR_Train(tf.keras.Model):
         self.metric_precision_s.update_state(precision_small)
         return {m.name: m.result() for m in self.metrics}
 
-    # This part is incomplete.
-    def predict_step(self, inputs):
-        batch_inputs, batch_targets = get_data_batch(inputs, self.num_input_frames, self.num_target_frames)
-        batch_predictions = self.generator_obj(batch_inputs)
-
-        gen_sequence1 = layers.concatenate([batch_inputs, batch_predictions], axis=1)
-        real_sequence = layers.concatenate([batch_inputs, batch_targets], axis=1)
-        concat_inputs = layers.concatenate([real_sequence, gen_sequence1], axis=0)
-
-        concat_outputs = self.discriminator_obj(concat_inputs)
-        score_real, score_generated = tf.split(concat_outputs, 2, axis=0)
-        disc_losses = self.loss_disc_fun(score_generated, score_real)
-
-        num_samples_per_input = self._latent_numbers
-        generated_samples = [
-            self.generator_obj(batch_inputs) for _ in range(num_samples_per_input)]
-        gen_sequence2 = [layers.concatenate([batch_inputs, x], axis=1) for x in generated_samples]
-        gen_sequence2_concat_input = layers.concatenate(gen_sequence2, axis=0)
-        # the grid_cell_reg_input shape is (num_samples_per_input, B, self._num_target_frames, 256, 256, 1)
-        grid_cell_reg_input = tf.stack(generated_samples, axis=0)
-        grid_cell_reg = self.grid_cell_reg_fun(grid_cell_reg_input, batch_targets)
-        gen_disc_loss = self.loss_gen_disc_fun(gen_sequence2_concat_input)
-        gen_losses = gen_disc_loss + 20.0 * grid_cell_reg
-
-        self.disc_loss.update_state(disc_losses)
-        self.gen_loss.update_state(gen_losses)
-        self.metric_mse.update_state(real_sequence, gen_sequence1)
-        self.metric_nse.update_state(real_sequence, gen_sequence1)
-        return {m.name: m.result() for m in self.metrics}
-
     def get_config(self):
         return {"num_target_frames": self.num_target_frames,
                 "num_input_frames": self.num_input_frames,
